@@ -1,0 +1,23 @@
+{
+  "name": "weaselpromise.js",
+  "version": "0.0.1",
+  "description": "Javascript node.js promise based wrapper for the Warcraft Logs API.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "pintapoff (pintapoff@GitHub)",
+  "license": "MIT",
+  "keywords": [
+    "node",
+    "nodejs",
+    "wcl",
+    "warcraft logs",
+    "api"
+    "promise"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pintapoff/weaselpromise.js.git"
+  }
+}
