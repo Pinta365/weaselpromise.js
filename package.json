@@ -1,6 +1,6 @@
 {
   "name": "weaselpromise.js",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Javascript node.js promise based wrapper for the Warcraft Logs API.",
   "main": "index.js",
   "scripts": {
@@ -13,8 +13,10 @@
     "nodejs",
     "wcl",
     "warcraft logs",
-    "api"
-    "promise"
+    "api",
+    "promise",
+    "async",
+    "await"
   ],
   "repository": {
     "type": "git",

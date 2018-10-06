@@ -1,30 +1,40 @@
 /**
  * @fileOverview Weasel Promise - a promise based node.js wrapper module for the <a href="https://www.warcraftlogs.com/v1/docs">Warcraft Logs API</a>
  * @author pintapoff@GitHub
- * @version 0.0.1
+ * @version 1.0.0
  * @license MIT
  * @example
- * //install with "npm install weaselpromise.js"
- * const api = require('weaselpromise.js');
- *
- * //Set the public WCL api-key that you get from https://www.warcraftlogs.com/accounts/changeuser
- * api.setApiKey('abcd123abcd123abcd123abcd123abcd123');
- *
- * //Optional parameters for the api call.
- * var params = {};
- *
- * //Call the function to list guild reports, can be filtered on start time and end time as a UNIX timestamp with the optional parameters @params.
- * api.getReportsGuild('carpe cerevisi', 'moonglade', 'eu').then((data) => {
- *   console.log(data);
- * });
- */
-
+* //install with "npm install weaselpromise.js"
+* const api = require('weaselpromise.js');
+* 
+* //Set the public WCL api-key that you get from https://www.warcraftlogs.com/accounts/changeuser
+* api.setApiKey('abc123abcd123');
+* 
+* //Optional parameters for the api call, not used this time.
+* let params = {};
+* 
+* //Very crudely prints the number of fights on the latest guild report.. :)
+* async function numberOfFights() {
+*     try {
+*         let reports         = await api.getReportsGuild('carpe cerevisi', 'moonglade', 'eu', params);
+*         let latestReport    = await api.getReportFights(reports[0].id, params);
+*         
+*         console.log('Number of fights:', latestReport.fights.length);
+*     }
+*     catch (err) {
+*         console.log('We caught an error: ' + err.message);
+*     }
+* }
+* 
+* numberOfFights();
+* 
+*/
 'use strict';
 
-var https = require("https");
+const https = require('https');
 
-var exports = module.exports = {},
-    apiKey = '';
+let api     = module.exports = {},
+    apiKey  = '';
 
 /**
  * Serialize a parameters-object into a querystring format.
@@ -34,12 +44,13 @@ var exports = module.exports = {},
  * @private
  */
 function serializeParamString(obj) {
-    var str = [];
-    for (var p in obj)
+    let str = [];
+    for (let p in obj) {
         if (obj.hasOwnProperty(p)) {
-            str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
+            str.push(encodeURIComponent(p) + '=' + encodeURIComponent(obj[p]));
         }
-    return str.join("&");
+    }
+    return str.join('&');
 }
 
 /**
@@ -51,28 +62,29 @@ function serializeParamString(obj) {
  * @private
  */
 function getData(path, params) {
-    var qs = !params ? {} : params;
+    let qs = !params ? {} : params;
     qs.api_key = apiKey;
     qs = serializeParamString(qs);
     
-    var options = {
-        "method": "GET",
-        "hostname": "www.warcraftlogs.com",
-        "port": 443,
-        "path": "/v1" + encodeURI(path) + "?" + qs,
-        "headers": {
-            "cache-control": "no-cache"
+    let options = {
+        'method': 'GET',
+        'hostname': 'www.warcraftlogs.com',
+        'port': 443,
+        'path': '/v1' + encodeURI(path) + '?' + qs,
+        'headers': {
+            'cache-control': 'no-cache'
         }
     };
     
     return new Promise((resolve, reject) => {
-        var req = https.request(options, (res) => {
+        let req = https.request(options, (res) => {
             
             if (res.statusCode < 200 || res.statusCode >= 300) {
-                return reject(new Error('statusCode=' + res.statusCode));
+                return reject(new Error('Error code=' + res.statusCode + ' '+ res.statusMessage));
             }
             
-            var parts = [];
+            let parts = [];
+            
             res.on('data', (part) => {
                 parts.push(part);
             });
@@ -80,10 +92,12 @@ function getData(path, params) {
             res.on('end', () => {
                 try {
                     parts = JSON.parse(Buffer.concat(parts).toString());
-                } catch(e) {
-                    reject(e);
+                } catch(err) {
+                    reject(err);
+                } finally {
+                    resolve(parts);
                 }
-                resolve(parts);
+                
             });
         });
        
@@ -96,31 +110,19 @@ function getData(path, params) {
 }
 
 /**
- * A callback to run with the response and/or error from the WCL API call.
- *
- * @callback apiCallback
- * @param {Error} error - I case of an error it contains a new Error with the error message
- * @param {object} data - The data(JSON) return from the API
- * @private
- */
-
-
-/**
  * Sets your Warcraft Logs API-key which is needed to use the WCL API calls.
  * 
  * @param {string} key - your api-key from https://www.warcraftlogs.com/accounts/changeuser
  * @returns {boolean} true/false for setting the API Key
  * @public
  */
-exports.setApiKey = (key) => {
+api.setApiKey = (key) => {
     if (key && key.trim() != '') {
         apiKey = key;
         return true;
     }
     return false;
 };
-
-
 
 /**
  * Gets a list of available zones used throughout the API. 
@@ -129,12 +131,8 @@ exports.setApiKey = (key) => {
  * @returns {Promise} Promise object
  * @public
  */
-exports.getZones = (callback) => {
-    return new Promise((resolve, reject) => {
-        getData('/zones', null).then((data) => {
-            resolve(data);
-        });
-    });
+api.getZones = () => {
+    return getData('/zones', null);
 };
 
 /**
@@ -144,14 +142,9 @@ exports.getZones = (callback) => {
  * @returns {Promise} Promise object
  * @public
  */
-exports.getClasses = () => {
-    return new Promise((resolve, reject) => {
-        getData('/classes', null).then((data) => {
-            resolve(data);
-        });
-    });
+api.getClasses = () => {
+    return getData('/classes', null);
 };
-
 
 /**
  * Gets data concerning rankings of a specific encounter. 
@@ -162,12 +155,8 @@ exports.getClasses = () => {
  * @returns {Promise} Promise object
  * @public
  */
-exports.getRankingsEncounter = (encounterID, params) => {
-    return new Promise((resolve, reject) => {
-        getData('/rankings/encounter/' + encounterID.toString(), params).then((data) => {
-            resolve(data);
-        });
-    });
+api.getRankingsEncounter = (encounterID, params) => {
+    return getData('/rankings/encounter/' + encounterID.toString(), params);
 };
 
 /**
@@ -181,12 +170,8 @@ exports.getRankingsEncounter = (encounterID, params) => {
  * @returns {Promise} Promise object
  * @public
  */
-exports.getRankingsCharacter = (characterName, serverName, serverRegion, params) => {
-    return new Promise((resolve, reject) => {
-        getData('/rankings/character/' + characterName + '/' + serverName + '/' + serverRegion, params).then((data) => {
-            resolve(data);
-        });
-    });
+api.getRankingsCharacter = (characterName, serverName, serverRegion, params) => {
+    return getData('/rankings/character/' + characterName + '/' + serverName + '/' + serverRegion, params);
 };
 
 /**
@@ -200,12 +185,8 @@ exports.getRankingsCharacter = (characterName, serverName, serverRegion, params)
  * @returns {Promise} Promise object
  * @public
  */
-exports.getParsesCharacter = (characterName, serverName, serverRegion, params) => {
-    return new Promise((resolve, reject) => {
-        getData('/parses/character/' + characterName + '/' + serverName + '/' + serverRegion, params).then((data) => {
-            resolve(data);
-        });
-    });
+api.getParsesCharacter = (characterName, serverName, serverRegion, params) => {
+    return getData('/parses/character/' + characterName + '/' + serverName + '/' + serverRegion, params);
 };
 
 /**
@@ -219,12 +200,8 @@ exports.getParsesCharacter = (characterName, serverName, serverRegion, params) =
  * @returns {Promise} Promise object
  * @public
  */
-exports.getReportsGuild = (guildName, guildServer, guildRegion, params) => {
-    return new Promise((resolve, reject) => {
-        getData('/reports/guild/' + guildName + '/' + guildServer + '/' + guildRegion, params).then((data) => {
-            resolve(data);
-        });
-    });
+api.getReportsGuild = (guildName, guildServer, guildRegion, params) => {
+    return getData('/reports/guild/' + guildName + '/' + guildServer + '/' + guildRegion, params);
 };
 
 /**
@@ -236,12 +213,8 @@ exports.getReportsGuild = (guildName, guildServer, guildRegion, params) => {
  * @returns {Promise} Promise object
  * @public
  */
-exports.getReportsUser = (userName, params) => {
-    return new Promise((resolve, reject) => {
-        getData('/reports/user' + userName, params).then((data) => {
-            resolve(data);
-        });
-    });
+api.getReportsUser = (userName, params) => {
+    return getData('/reports/user' + userName, params);
 };
 
 /**
@@ -253,12 +226,8 @@ exports.getReportsUser = (userName, params) => {
  * @returns {Promise} Promise object
  * @public
  */
-exports.getReportFights = (code, params) => {
-    return new Promise((resolve, reject) => {
-        getData('/report/fights/' + code, params).then((data) => {
-            resolve(data);
-        });
-    });
+api.getReportFights = (code, params) => {
+    return getData('/report/fights/' + code, params);
 };
 
 /**
@@ -270,12 +239,8 @@ exports.getReportFights = (code, params) => {
  * @returns {Promise} Promise object
  * @public
  */
-exports.getReportEvents = (code, params) => {
-    return new Promise((resolve, reject) => {
-        getData('/report/events/' + code, params).then((data) => {
-            resolve(data);
-        });
-    });
+api.getReportEvents = (code, params) => {
+    return getData('/report/events/' + code, params);
 };
 
 /**
@@ -288,10 +253,6 @@ exports.getReportEvents = (code, params) => {
  * @returns {Promise} Promise object
  * @public
  */
-exports.getReportTables = (view, code, params) => {
-    return new Promise((resolve, reject) => {
-        getData('/report/tables/' + view + '/' + code, params).then((data) => {
-            resolve(data);
-        });
-    });
+api.getReportTables = (view, code, params) => {
+    return getData('/report/tables/' + view + '/' + code, params);
 };
